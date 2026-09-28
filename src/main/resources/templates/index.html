@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title th:text="${pageTitle} + ' | SKYTRANS'">SKYTRANS</title>
+	<link rel="stylesheet" th:href="@{/css/skytrans.css}" href="../static/css/skytrans.css">
+	<script defer th:src="@{/js/skytrans.js}" src="../static/js/skytrans.js"></script>
+</head>
+<body>
+<div class="app">
+
+	<!-- ================= Sidebar navigation ================= -->
+	<aside class="sidebar">
+		<div class="brand">
+			<div class="brand-mark">S</div>
+			<div><span class="brand-name">SKYTRANS</span><span class="brand-tagline">Urban cable transit control</span></div>
+		</div>
+
+		<div class="nav-group-title">Overview</div>
+		<nav class="nav-links">
+			<a class="nav-link" th:href="@{/(page='dashboard')}" th:classappend="${page == 'dashboard'} ? 'active'">Dashboard</a>
+		</nav>
+
+		<div class="nav-group-title">Transit operations</div>
+		<nav class="nav-links">
+			<a class="nav-link" th:href="@{/(page='cable-cars')}" th:classappend="${page == 'cable-cars'} ? 'active'">Cable Cars</a>
+			<a class="nav-link" th:href="@{/(page='terminals')}" th:classappend="${page == 'terminals'} ? 'active'">Terminals</a>
+			<a class="nav-link" th:href="@{/(page='routes')}" th:classappend="${page == 'routes'} ? 'active'">Routes</a>
+			<a class="nav-link" th:href="@{/(page='trips')}" th:classappend="${page == 'trips'} ? 'active'">Trips</a>
+			<a class="nav-link" th:href="@{/(page='telemetry')}" th:classappend="${page == 'telemetry'} ? 'active'">Telemetry &amp; Safety</a>
+		</nav>
+
+		<div class="nav-group-title">Sales &amp; purchasing</div>
+		<nav class="nav-links">
+			<a class="nav-link" th:href="@{/(page='sales-orders')}" th:classappend="${page == 'sales-orders'} ? 'active'">Sales Orders</a>
+			<a class="nav-link" th:href="@{/(page='invoices')}" th:classappend="${page == 'invoices'} ? 'active'">Invoices</a>
+			<a class="nav-link" th:href="@{/(page='purchase-orders')}" th:classappend="${page == 'purchase-orders'} ? 'active'">Purchase Orders</a>
+			<a class="nav-link" th:href="@{/(page='vendor-bills')}" th:classappend="${page == 'vendor-bills'} ? 'active'">Vendor Bills</a>
+			<a class="nav-link" th:href="@{/(page='payments')}" th:classappend="${page == 'payments'} ? 'active'">Payments</a>
+		</nav>
+
+		<div class="nav-group-title">Finance</div>
+		<nav class="nav-links">
+			<a class="nav-link" th:href="@{/(page='accounting')}" th:classappend="${page == 'accounting'} ? 'active'">Accounting Journal</a>
+			<a class="nav-link" th:href="@{/(page='budgets')}" th:classappend="${page == 'budgets'} ? 'active'">Budgets</a>
+			<a class="nav-link" th:href="@{/(page='reports')}" th:classappend="${page == 'reports'} ? 'active'">Reports</a>
+		</nav>
+
+		<div class="nav-group-title">Master data</div>
+		<nav class="nav-links">
+			<a class="nav-link" th:href="@{/(page='contacts')}" th:classappend="${page == 'contacts'} ? 'active'">Contacts</a>
+			<a class="nav-link" th:href="@{/(page='products')}" th:classappend="${page == 'products'} ? 'active'">Products</a>
+			<a class="nav-link" th:href="@{/(page='accounts')}" th:classappend="${page == 'accounts'} ? 'active'">Chart of Accounts</a>
+		</nav>
+	</aside>
+
+	<main class="main">
+		<header class="topbar">
+			<div>
+				<div class="eyebrow">Urban Autonomous Electric Cable Car &amp; Transit Tram Controller</div>
+				<h1 class="page-title" th:text="${pageTitle}">Operations Dashboard</h1>
+			</div>
+			<div class="date-chip" th:text="${#temporals.format(#temporals.createNow(), 'EEE, dd MMM yyyy')}">Today</div>
+		</header>
+
+		<!-- Messages from action buttons (Start trip, Approve, Resolve) -->
+		<p id="pageMessage" class="message page-message" aria-live="polite"></p>
+
+		<!-- ================= DASHBOARD ================= -->
+		<section th:if="${page == 'dashboard'}">
+			<div class="metrics">
+				<div class="metric metric-info">
+					<span class="metric-label">Cable cars</span>
+					<strong class="metric-value" th:text="${cableCarCount}">0</strong>
+					<span class="metric-note">Registered vehicles</span>
+				</div>
+				<div class="metric metric-success">
+					<span class="metric-label">Passengers today</span>
+					<strong class="metric-value" th:text="${dailyPassengers}">0</strong>
+					<span class="metric-note">From completed trips</span>
+				</div>
+				<div class="metric metric-info">
+					<span class="metric-label">Active trips</span>
+					<strong class="metric-value" th:text="${activeTripCount}">0</strong>
+					<span class="metric-note">Currently running</span>
+				</div>
+				<div class="metric" th:classappend="${#lists.isEmpty(alertRows)} ? 'metric-success' : 'metric-danger'">
+					<span class="metric-label">Open safety alerts</span>
+					<strong class="metric-value" th:text="${#lists.size(alertRows)}">0</strong>
+					<span class="metric-note">Need attention</span>
+				</div>
+				<div class="metric metric-success">
+					<span class="metric-label">Revenue this month</span>
+					<strong class="metric-value" th:text="${#numbers.formatDecimal(monthlyRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</strong>
+					<span class="metric-note">Posted to income accounts</span>
+				</div>
+				<div class="metric metric-warning">
+					<span class="metric-label">Expenses this month</span>
+					<strong class="metric-value" th:text="${#numbers.formatDecimal(monthlyExpenses, 1, 'COMMA', 2, 'POINT')}">0.00</strong>
+					<span class="metric-note">Posted to expense accounts</span>
+				</div>
+			</div>
+
+			<div class="dashboard-grid">
+				<div>
+					<section class="panel">
+						<div class="panel-heading"><h2>Fleet status</h2><a th:href="@{/(page='cable-cars')}">All cable cars</a></div>
+						<div class="table-wrap">
+							<table>
+								<thead><tr><th>Vehicle</th><th>Capacity</th><th>Speed (km/h)</th><th>Battery %</th><th>Motor power</th><th>Status</th></tr></thead>
+								<tbody>
+									<tr th:each="car : ${cableCarRows}">
+										<td th:text="${car.vehicleNumber}">CR-101</td>
+										<td th:text="${car.capacity}">40</td>
+										<td th:text="${car.currentSpeed}">0</td>
+										<td th:text="${car.batteryLevel}">100</td>
+										<td th:text="${car.motorPower}">0</td>
+										<td><span class="badge" th:classappend="'badge-' + ${#strings.toLowerCase(car.status)}" th:text="${car.status}">READY</span></td>
+									</tr>
+									<tr th:if="${#lists.isEmpty(cableCarRows)}"><td colspan="6" class="empty-row">No cable cars have been added.</td></tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+
+					<section class="panel">
+						<div class="panel-heading"><h2>Recent telemetry</h2><a th:href="@{/(page='telemetry')}">All readings</a></div>
+						<div class="table-wrap">
+							<table>
+								<thead><tr><th>Vehicle</th><th>Passengers</th><th>Speed</th><th>Tension</th><th>Motor power</th><th>Battery %</th><th>Time</th></tr></thead>
+								<tbody>
+									<tr th:each="reading : ${recentTelemetry}">
+										<td th:text="${reading.cableCar.vehicleNumber}">CR-101</td>
+										<td th:text="${reading.passengerCount}">0</td>
+										<td th:text="${reading.speed}">0</td>
+										<td th:text="${reading.cableTension}">0</td>
+										<td th:text="${reading.motorPowerUsage}">0</td>
+										<td th:text="${reading.batteryLevel}">0</td>
+										<td th:text="${#temporals.format(reading.timestamp, 'dd MMM HH:mm')}">time</td>
+									</tr>
+									<tr th:if="${#lists.isEmpty(recentTelemetry)}"><td colspan="7" class="empty-row">No telemetry received yet.</td></tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+				</div>
+
+				<div>
+					<section class="panel">
+						<div class="panel-heading"><h2>Open safety alerts</h2><a th:href="@{/(page='telemetry')}">Safety limits</a></div>
+						<div class="panel-body" th:if="${#lists.isEmpty(alertRows)}">
+							<div class="status-line"><span class="status-dot"></span>All monitored readings are within limits</div>
+						</div>
+						<div class="table-wrap" th:unless="${#lists.isEmpty(alertRows)}">
+							<table>
+								<thead><tr><th>Vehicle</th><th>Alert</th><th>Severity</th><th></th></tr></thead>
+								<tbody>
+									<tr th:each="alert : ${alertRows}">
+										<td th:text="${alert.cableCar.vehicleNumber}">CR-101</td>
+										<td th:text="${alert.type}" th:title="${alert.message}">OVERSPEED</td>
+										<td><span class="badge" th:classappend="'badge-' + ${#strings.toLowerCase(alert.severity)}" th:text="${alert.severity}">CRITICAL</span></td>
+										<td><button type="button" class="btn btn-small btn-secondary action-button" th:data-url="@{/api/alerts/{id}/resolve(id=${alert.id})}" data-success="Alert resolved.">Resolve</button></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
+
+					<section class="panel">
+						<div class="panel-heading"><h2>Financial overview</h2><a th:href="@{/(page='reports')}">Full reports</a></div>
+						<div class="panel-body">
+							<ul class="summary-list">
+								<li><span>Total income</span><strong th:text="${#numbers.formatDecimal(profitLoss.totalIncome, 1, 'COMMA', 2, 'POINT')}">0.00</strong></li>
+								<li><span>Total expenses</span><strong th:text="${#numbers.formatDecimal(profitLoss.totalExpenses, 1, 'COMMA', 2, 'POINT')}">0.00</strong></li>
+								<li><span>Total assets</span><strong th:text="${#numbers.formatDecimal(balanceSheet.totalAssets, 1, 'COMMA', 2, 'POINT')}">0.00</strong></li>
+								<li><span>Total liabilities</span><strong th:text="${#numbers.formatDecimal(balanceSheet.totalLiabilities, 1, 'COMMA', 2, 'POINT')}">0.00</strong></li>
+							</ul>
+							<div class="summary-total">
+								<span>Net profit / loss</span>
+								<span th:classappend="${profitLoss.netProfit.signum() < 0} ? 'value-negative' : 'value-positive'"
+									th:text="${#numbers.formatDecimal(profitLoss.netProfit, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+							</div>
+						</div>
+					</section>
+				</div>
+			</div>
+		</section>
+
+		<!-- ================= DATA ENTRY FORMS ================= -->
+		<!-- Each form is sent as JSON to the REST URL in data-url (see skytrans.js).
+		     Field names match the Java entity fields, e.g. "cableCar.id". -->
+
+		<section class="panel" th:if="${page == 'cable-cars'}">
+			<div class="panel-heading"><h2>Register cable car</h2></div>
+			<form class="panel-body api-form" data-url="/api/cablecars" data-success="Cable car registered.">
+				<div class="form-fields">
+					<label>Vehicle number<input name="vehicleNumber" required placeholder="CR-104"></label>
+					<label>Passenger capacity<input name="capacity" type="number" min="1" required></label>
+					<label>Maximum speed (km/h)<input name="maximumSpeed" type="number" min="0.1" step="0.1" required></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add cable car</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'terminals'}">
+			<div class="panel-heading"><h2>Add terminal</h2></div>
+			<form class="panel-body api-form" data-url="/api/cablecar/terminals" data-success="Terminal added.">
+				<div class="form-fields">
+					<label>Terminal code<input name="terminalCode" required placeholder="WST"></label>
+					<label>Name<input name="name" required placeholder="West Terminal"></label>
+					<label>Location<input name="location" required placeholder="West District"></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add terminal</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'routes'}">
+			<div class="panel-heading"><h2>Add route</h2></div>
+			<form class="panel-body api-form" data-url="/api/routes" data-success="Route added.">
+				<div class="form-fields">
+					<label>Route code<input name="routeCode" required placeholder="MNT-03"></label>
+					<label>Source terminal
+						<select name="sourceTerminal.id" required>
+							<option value="">Choose terminal</option>
+							<option th:each="t : ${terminals}" th:value="${t.id}" th:text="${t.terminalCode + ' - ' + t.name}">Terminal</option>
+						</select>
+					</label>
+					<label>Destination terminal
+						<select name="destinationTerminal.id" required>
+							<option value="">Choose terminal</option>
+							<option th:each="t : ${terminals}" th:value="${t.id}" th:text="${t.terminalCode + ' - ' + t.name}">Terminal</option>
+						</select>
+					</label>
+					<label>Distance (km)<input name="distance" type="number" min="0.1" step="0.1" required></label>
+					<label>Estimated time (min)<input name="estimatedTime" type="number" min="1" required></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add route</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'trips'}">
+			<div class="panel-heading"><h2>Schedule trip</h2></div>
+			<form class="panel-body api-form" data-url="/api/trips" data-success="Trip scheduled.">
+				<p class="panel-note">The server checks the passenger count against the car capacity and the safety limit.</p>
+				<div class="form-fields">
+					<label>Cable car
+						<select name="cableCar.id" required>
+							<option value="">Choose vehicle</option>
+							<option th:each="car : ${cableCars}" th:value="${car.id}" th:text="${car.vehicleNumber + ' (capacity ' + car.capacity + ', ' + car.status + ')'}">CR-101</option>
+						</select>
+					</label>
+					<label>Route
+						<select name="route.id" required>
+							<option value="">Choose route</option>
+							<option th:each="r : ${routes}" th:value="${r.id}" th:text="${r.routeCode + ': ' + r.sourceTerminal.name + ' to ' + r.destinationTerminal.name}">Route</option>
+						</select>
+					</label>
+					<label>Passengers<input name="passengerCount" type="number" min="0" required></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Schedule trip</button></div>
+			</form>
+		</section>
+
+		<div class="form-grid-2" th:if="${page == 'telemetry'}">
+			<section class="panel">
+				<div class="panel-heading"><h2>Record sensor reading</h2></div>
+				<form class="panel-body api-form" data-url="/api/cablecar/telemetry" data-success="Reading stored. Any safety breach creates an alert on the dashboard.">
+					<div class="form-fields">
+						<label>Cable car
+							<select name="cableCar.id" required>
+								<option value="">Choose vehicle</option>
+								<option th:each="car : ${cableCars}" th:value="${car.id}" th:text="${car.vehicleNumber}">CR-101</option>
+							</select>
+						</label>
+						<label>Passengers<input name="passengerCount" type="number" min="0" required></label>
+						<label>Cable tension (kN)<input name="cableTension" type="number" min="0" step="0.1" required></label>
+						<label>Motor power (kW)<input name="motorPowerUsage" type="number" min="0" step="0.1" required></label>
+						<label>Speed (km/h)<input name="speed" type="number" min="0" step="0.1" required></label>
+						<label>Battery (%)<input name="batteryLevel" type="number" min="0" max="100" step="0.1" required></label>
+						<label>Temperature (&deg;C)<input name="temperature" type="number" step="0.1" required></label>
+					</div>
+					<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Submit reading</button></div>
+				</form>
+			</section>
+
+			<section class="panel">
+				<div class="panel-heading"><h2>Safety limits</h2></div>
+				<form class="panel-body api-form" data-url="/api/safety-configuration" data-method="PUT" data-success="Safety limits updated.">
+					<p class="panel-note">Stored in the database. Every telemetry reading and trip is checked against these values.</p>
+					<div class="form-fields">
+						<label>Max cable speed (km/h)<input name="maximumCableSpeed" type="number" min="0.1" step="0.1" required th:value="${safety.maximumCableSpeed}"></label>
+						<label>Min cable tension (kN)<input name="minimumCableTension" type="number" min="0.1" step="0.1" required th:value="${safety.minimumCableTension}"></label>
+						<label>Max cable tension (kN)<input name="maximumCableTension" type="number" min="0.1" step="0.1" required th:value="${safety.maximumCableTension}"></label>
+						<label>Max motor power (kW)<input name="maximumMotorPower" type="number" min="0.1" step="0.1" required th:value="${safety.maximumMotorPower}"></label>
+						<label>Max passengers per car<input name="maximumPassengerCapacity" type="number" min="1" required th:value="${safety.maximumPassengerCapacity}"></label>
+					</div>
+					<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Save limits</button></div>
+				</form>
+			</section>
+		</div>
+
+		<section class="panel" th:if="${page == 'contacts'}">
+			<div class="panel-heading"><h2>Add contact</h2></div>
+			<form class="panel-body api-form" data-url="/api/contacts" data-success="Contact added.">
+				<div class="form-fields">
+					<label>Name<input name="name" required placeholder="Company name"></label>
+					<label>Type
+						<select name="type" required>
+							<option value="">Choose type</option>
+							<option value="CUSTOMER">Customer</option>
+							<option value="VENDOR">Vendor</option>
+						</select>
+					</label>
+					<label>Email<input name="email" type="email" placeholder="name@company.com"></label>
+					<label>Phone<input name="phone" placeholder="555-0100"></label>
+					<label>Address<input name="address" placeholder="Street, city"></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add contact</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'products'}">
+			<div class="panel-heading"><h2>Add product</h2></div>
+			<form class="panel-body api-form" data-url="/api/products" data-success="Product added.">
+				<p class="panel-note">The ledger account decides the accounting: choose an INCOME account for services you sell, and an EXPENSE account for things you buy.</p>
+				<div class="form-fields">
+					<label>Name<input name="name" required placeholder="Product or service name"></label>
+					<label>Type
+						<select name="type" required>
+							<option value="SERVICE">Service</option>
+							<option value="PRODUCT">Product</option>
+						</select>
+					</label>
+					<label>Unit price<input name="unitPrice" type="number" min="0.01" step="0.01" required></label>
+					<label>Ledger account
+						<select name="account.id" required>
+							<option value="">Choose account</option>
+							<option th:each="a : ${accounts}" th:value="${a.id}" th:text="${a.accountCode + ' ' + a.accountName + ' (' + a.accountType + ')'}">Account</option>
+						</select>
+					</label>
+					<label>Description<input name="description" placeholder="Short description"></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add product</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'accounts'}">
+			<div class="panel-heading"><h2>Add ledger account</h2></div>
+			<form class="panel-body api-form" data-url="/api/accounts" data-success="Account added.">
+				<div class="form-fields">
+					<label>Account code<input name="accountCode" required placeholder="5200"></label>
+					<label>Account name<input name="accountName" required placeholder="Station Cleaning Costs"></label>
+					<label>Account type
+						<select name="accountType" required>
+							<option value="">Choose type</option>
+							<option value="ASSET">Asset</option>
+							<option value="LIABILITY">Liability</option>
+							<option value="INCOME">Income</option>
+							<option value="EXPENSE">Expense</option>
+						</select>
+					</label>
+					<label>Opening balance<input name="openingBalance" type="number" step="0.01" value="0" required></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add account</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'purchase-orders'}">
+			<div class="panel-heading"><h2>Create purchase order</h2></div>
+			<form class="panel-body api-form" data-url="/api/purchase-orders" data-success="Purchase order created. Approve it before billing.">
+				<div class="form-fields">
+					<label>Vendor
+						<select name="vendor.id" required>
+							<option value="">Choose vendor</option>
+							<option th:each="v : ${vendors}" th:value="${v.id}" th:text="${v.name}">Vendor</option>
+						</select>
+					</label>
+					<label>Product
+						<select name="product.id" required>
+							<option value="">Choose product</option>
+							<option th:each="p : ${products}" th:value="${p.id}" th:text="${p.name + ' (' + p.unitPrice + ')'}">Product</option>
+						</select>
+					</label>
+					<label>Quantity<input name="quantity" type="number" min="1" required></label>
+					<label>Unit price <span class="form-hint">Leave empty to use the product price</span><input name="unitPrice" type="number" min="0.01" step="0.01"></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Create order</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'vendor-bills'}">
+			<div class="panel-heading"><h2>Create vendor bill</h2></div>
+			<form class="panel-body api-form" data-url="/api/vendor-bills" data-success="Vendor bill created and posted to the purchase journal.">
+				<p class="panel-note">The bill amount is copied from the approved purchase order by the server.</p>
+				<div class="form-fields">
+					<label>Approved purchase order
+						<select name="purchaseOrder.id" required>
+							<option value="">Choose purchase order</option>
+							<option th:each="o : ${approvedOrders}" th:value="${o.id}" th:text="${'PO-' + o.id + ' · ' + o.vendor.name + ' · ' + o.totalAmount}">PO</option>
+						</select>
+					</label>
+				</div>
+				<p class="panel-note" th:if="${#lists.isEmpty(approvedOrders)}">No approved purchase orders. Approve one on the Purchase Orders page first.</p>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Create bill</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'sales-orders'}">
+			<div class="panel-heading"><h2>Create sales order</h2></div>
+			<form class="panel-body api-form" data-url="/api/sales-orders" data-success="Sales order created.">
+				<p class="panel-note">Total = passenger trips &times; rate per passenger (calculated by the server).</p>
+				<div class="form-fields">
+					<label>Customer
+						<select name="customer.id" required>
+							<option value="">Choose customer</option>
+							<option th:each="c : ${customers}" th:value="${c.id}" th:text="${c.name}">Customer</option>
+						</select>
+					</label>
+					<label>Product
+						<select name="product.id" required>
+							<option value="">Choose product</option>
+							<option th:each="p : ${products}" th:value="${p.id}" th:text="${p.name + ' (' + p.unitPrice + ')'}">Product</option>
+						</select>
+					</label>
+					<label>Passenger trips <span class="form-hint">Empty = this month's completed trips</span><input name="passengerTrips" type="number" min="1"></label>
+					<label>Rate per passenger <span class="form-hint">Empty = product price</span><input name="ratePerPassenger" type="number" min="0.01" step="0.01"></label>
+				</div>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Create order</button></div>
+			</form>
+		</section>
+
+		<section class="panel" th:if="${page == 'invoices'}">
+			<div class="panel-heading"><h2>Create customer invoice</h2></div>
+			<form class="panel-body api-form" data-url="/api/invoices" data-success="Invoice created and posted to the sales journal.">
+				<div class="form-fields">
+					<label>Sales order
+						<select name="salesOrder.id" required>
+							<option value="">Choose sales order</option>
+							<option th:each="o : ${openSalesOrders}" th:value="${o.id}" th:text="${'SO-' + o.id + ' · ' + o.customer.name + ' · ' + o.totalAmount}">SO</option>
+						</select>
+					</label>
+				</div>
+				<p class="panel-note" th:if="${#lists.isEmpty(openSalesOrders)}">No sales orders waiting to be invoiced.</p>
+				<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Create invoice</button></div>
+			</form>
+		</section>
+
+		<div class="form-grid-2" th:if="${page == 'payments'}">
+			<section class="panel">
+				<div class="panel-heading"><h2>Receive customer payment</h2></div>
+				<form class="panel-body api-form" data-url="/api/payments/customer" data-success="Customer payment recorded.">
+					<div class="form-fields">
+						<label>Unpaid invoice
+							<select name="invoice.id" required>
+								<option value="">Choose invoice</option>
+								<option th:each="i : ${unpaidInvoices}" th:value="${i.id}" th:text="${'INV-' + i.id + ' · ' + i.customer.name + ' · due ' + invoiceOutstanding[i.id]}">Invoice</option>
+							</select>
+						</label>
+						<label>Amount<input name="amount" type="number" min="0.01" step="0.01" required></label>
+					</div>
+					<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Record payment</button></div>
+				</form>
+			</section>
+			<section class="panel">
+				<div class="panel-heading"><h2>Pay vendor bill</h2></div>
+				<form class="panel-body api-form" data-url="/api/payments/vendor" data-success="Vendor payment recorded.">
+					<div class="form-fields">
+						<label>Unpaid bill
+							<select name="vendorBill.id" required>
+								<option value="">Choose bill</option>
+								<option th:each="b : ${unpaidBills}" th:value="${b.id}" th:text="${'BILL-' + b.id + ' · ' + b.vendor.name + ' · due ' + billOutstanding[b.id]}">Bill</option>
+							</select>
+						</label>
+						<label>Amount<input name="amount" type="number" min="0.01" step="0.01" required></label>
+					</div>
+					<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Pay bill</button></div>
+				</form>
+			</section>
+		</div>
+
+		<div class="form-grid-2" th:if="${page == 'budgets'}">
+			<section class="panel">
+				<div class="panel-heading"><h2>Create budget</h2></div>
+				<form class="panel-body api-form" data-url="/api/budgets" data-success="Budget saved.">
+					<div class="form-fields">
+						<label>Transit corridor
+							<select name="analyticAccount.id" required>
+								<option value="">Choose corridor</option>
+								<option th:each="c : ${corridors}" th:value="${c.id}" th:text="${c.name}">Corridor</option>
+							</select>
+						</label>
+						<label>Year<input name="budgetYear" type="number" min="2000" required th:value="${currentYear}"></label>
+						<label>Planned revenue<input name="plannedRevenue" type="number" min="0" step="0.01" required></label>
+						<label>Electricity budget<input name="electricityBudget" type="number" min="0" step="0.01" required></label>
+						<label>Maintenance budget<input name="maintenanceBudget" type="number" min="0" step="0.01" required></label>
+					</div>
+					<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Save budget</button></div>
+				</form>
+			</section>
+			<section class="panel">
+				<div class="panel-heading"><h2>Add transit corridor</h2></div>
+				<form class="panel-body api-form" data-url="/api/analytic-accounts" data-success="Corridor added.">
+					<div class="form-fields">
+						<label>Corridor name<input name="name" required placeholder="Transit Corridor - East Tram Line"></label>
+						<label>Description<input name="description" placeholder="Optional"></label>
+					</div>
+					<div class="form-actions"><p class="message"></p><button class="btn" type="submit">Add corridor</button></div>
+				</form>
+			</section>
+		</div>
+
+		<!-- ================= RECORD TABLE (all list pages) ================= -->
+		<section class="panel" th:if="${page != 'dashboard' && page != 'reports'}">
+			<div class="panel-heading">
+				<h2 th:text="${page == 'accounting'} ? 'Posted journal entries (each has equal debit and credit)' : 'Records'">Records</h2>
+				<span class="status-line"><span class="status-dot"></span><span th:text="${#lists.size(rows)} + ' records'">0 records</span></span>
+			</div>
+			<div class="table-wrap">
+				<table>
+					<thead>
+						<tr>
+							<th th:each="header : ${headers}" th:text="${header}">Column</th>
+							<th th:if="${page == 'trips' || page == 'purchase-orders'}">Action</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr th:each="row : ${rows}">
+							<td th:each="cell, cellStat : ${row.cells}">
+								<span th:if="${headers[cellStat.index] == 'Status'}" class="badge" th:classappend="'badge-' + ${#strings.toLowerCase(cell)}" th:text="${cell}">READY</span>
+								<span th:unless="${headers[cellStat.index] == 'Status'}" th:text="${cell}">value</span>
+							</td>
+							<td th:if="${page == 'trips' || page == 'purchase-orders'}">
+								<button type="button" class="btn btn-small action-button" th:if="${row.actionUrl != null}"
+									th:data-url="${row.actionUrl}" th:data-success="${row.actionLabel} + ' done.'" th:text="${row.actionLabel}">Action</button>
+							</td>
+						</tr>
+						<tr th:if="${#lists.isEmpty(rows)}">
+							<td class="empty-row" th:attr="colspan=${#lists.size(headers) + 1}">No records yet.</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</section>
+
+		<!-- ================= REPORTS ================= -->
+		<section th:if="${page == 'reports'}">
+			<p class="panel-note">Balances are calculated from opening balances and all posted journal entries.</p>
+			<div class="report-grid">
+				<section class="panel">
+					<div class="panel-heading"><h2>Balance sheet · Assets</h2></div>
+					<div class="panel-body">
+						<ul class="summary-list">
+							<li th:each="item : ${balanceSheet.assets}"><span th:text="${item.key}">Cash/Bank</span><span th:text="${#numbers.formatDecimal(item.value, 1, 'COMMA', 2, 'POINT')}">0.00</span></li>
+						</ul>
+						<div class="summary-total"><span>Total assets</span><span th:text="${#numbers.formatDecimal(balanceSheet.totalAssets, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+					</div>
+				</section>
+				<section class="panel">
+					<div class="panel-heading"><h2>Balance sheet · Liabilities &amp; equity</h2></div>
+					<div class="panel-body">
+						<ul class="summary-list">
+							<li th:each="item : ${balanceSheet.liabilities}"><span th:text="${item.key}">Creditors</span><span th:text="${#numbers.formatDecimal(item.value, 1, 'COMMA', 2, 'POINT')}">0.00</span></li>
+							<li><span>Current earnings (net profit)</span><span th:text="${#numbers.formatDecimal(balanceSheet.currentEarnings, 1, 'COMMA', 2, 'POINT')}">0.00</span></li>
+						</ul>
+						<div class="summary-total"><span>Total liabilities + equity</span><span th:text="${#numbers.formatDecimal(balanceSheet.totalLiabilitiesAndEquity, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+					</div>
+				</section>
+				<section class="panel">
+					<div class="panel-heading"><h2>Profit &amp; loss · Income</h2></div>
+					<div class="panel-body">
+						<ul class="summary-list">
+							<li th:each="item : ${profitLoss.income}"><span th:text="${item.key}">Revenue</span><span th:text="${#numbers.formatDecimal(item.value, 1, 'COMMA', 2, 'POINT')}">0.00</span></li>
+						</ul>
+						<div class="summary-total"><span>Total income</span><span th:text="${#numbers.formatDecimal(profitLoss.totalIncome, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+					</div>
+				</section>
+				<section class="panel">
+					<div class="panel-heading"><h2>Profit &amp; loss · Expenses</h2></div>
+					<div class="panel-body">
+						<ul class="summary-list">
+							<li th:each="item : ${profitLoss.expenses}"><span th:text="${item.key}">Expense</span><span th:text="${#numbers.formatDecimal(item.value, 1, 'COMMA', 2, 'POINT')}">0.00</span></li>
+						</ul>
+						<div class="summary-total"><span>Total expenses</span><span th:text="${#numbers.formatDecimal(profitLoss.totalExpenses, 1, 'COMMA', 2, 'POINT')}">0.00</span></div>
+						<div class="summary-total">
+							<span>Net profit / loss</span>
+							<span th:classappend="${profitLoss.netProfit.signum() < 0} ? 'value-negative' : 'value-positive'" th:text="${#numbers.formatDecimal(profitLoss.netProfit, 1, 'COMMA', 2, 'POINT')}">0.00</span>
+						</div>
+					</div>
+				</section>
+				<section class="panel full-width">
+					<div class="panel-heading"><h2>Budget vs actual</h2><a th:href="@{/(page='budgets')}">Manage budgets</a></div>
+					<div class="table-wrap">
+						<table>
+							<thead><tr><th>Transit corridor</th><th>Year</th><th>Planned revenue</th><th>Actual revenue</th><th>Variance</th><th>Electricity plan</th><th>Electricity actual</th><th>Variance</th><th>Maintenance plan</th><th>Maintenance actual</th><th>Variance</th></tr></thead>
+							<tbody>
+								<tr th:each="row : ${budgetRows}">
+									<td th:text="${row.transitCorridor}">Corridor</td>
+									<td th:text="${row.budgetYear}">2026</td>
+									<td th:text="${#numbers.formatDecimal(row.plannedRevenue, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.actualRevenue, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.revenueVariance, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.electricityBudget, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.actualElectricityExpense, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.electricityVariance, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.maintenanceBudget, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.actualMaintenanceExpense, 1, 'COMMA', 2, 'POINT')}">0</td>
+									<td th:text="${#numbers.formatDecimal(row.maintenanceVariance, 1, 'COMMA', 2, 'POINT')}">0</td>
+								</tr>
+								<tr th:if="${#lists.isEmpty(budgetRows)}"><td colspan="11" class="empty-row">No budgets have been entered.</td></tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+			</div>
+		</section>
+	</main>
+</div>
+</body>
+</html>
